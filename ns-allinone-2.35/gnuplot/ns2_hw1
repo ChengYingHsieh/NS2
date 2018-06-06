@@ -1,0 +1,10 @@
+set xlabel "agent number"
+set ylabel "waiting time"
+set title "waiting time vs. agent number"
+unset key
+set xrange [1:9]
+set xtics 1 ,1 ,12
+plot "wait.txt" with linespoints pointtype 7 pointsize 1
+set terminal postscript color
+set output "hw1_rate.ps"
+replot

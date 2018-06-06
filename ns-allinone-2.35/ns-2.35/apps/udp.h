@@ -63,8 +63,10 @@ public:
 	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
 	virtual void recv(Packet* pkt, Handler*);
 	virtual int command(int argc, const char*const* argv);
+
 protected:
 	int seqno_;
+	int totalpkt;
 };
 
 #endif

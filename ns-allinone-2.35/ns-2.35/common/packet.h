@@ -610,6 +610,10 @@ struct hdr_cmn {
 	// source routing 
         char src_rt_valid;
 	double ts_arr_; // Required by Marker of JOBS 
+	
+	//-----------------
+	double PKT_sendtime_;
+	//-----------------
 
 	//Monarch extn begins
 	nsaddr_t prev_hop_;     // IP addr of forwarding hop
@@ -649,6 +653,10 @@ struct hdr_cmn {
 		return (hdr_cmn*) p->access(offset_);
 	}
 	
+	/*----------------- packet send time --------------------*/	
+	inline double& PKT_sendtime() { return (PKT_sendtime_); }
+	//---------------------------------------------------------
+
         /* per-field member functions */
 	inline packet_t& ptype() { return (ptype_); }
 	inline int& size() { return (size_); }

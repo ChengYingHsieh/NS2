@@ -44,12 +44,14 @@ static const char rcsid[] =
     "@(#) $Header: /cvsroot/nsnam/ns-2/tools/expoo.cc,v 1.15 2005/08/26 05:05:30 tomh Exp $ (Xerox)";
 #endif
 
+#include <stdio.h>
+#include <fstream>
+#include <iostream>
 #include <stdlib.h>
- 
 #include "random.h"
 #include "trafgen.h"
 #include "ranvar.h"
-
+using namespace std;
 
 /* implement an on/off source with exponentially distributed on and
  * off times.  parameterized by average burst time, average idle time,
@@ -63,20 +65,23 @@ class EXPOO_Traffic : public TrafficGenerator {
         virtual void timeout();
 	// Added by Debojyoti Dutta October 12th 2000
 	int command(int argc, const char*const* argv);
+	virtual void start();
+	virtual void stop();
  protected:
 	void init();
-	double ontime_;   /* average length of burst (sec) */
-	double offtime_;  /* average length of idle time (sec) */
-	double rate_;     /* send rate during on time (bps) */
-	double interval_; /* packet inter-arrival time during burst (sec) */
+	double ontime_;    /* average length of burst (sec) */
+	double offtime_;   /* average length of idle time (sec) */
+	double rate_;      /* send rate during on time (bps) */
+	double interval_;  /* packet inter-arrival time during burst (sec) */
+	int agent_num_;
+	int send_pkt_num;
 	unsigned int rem_; /* number of packets left in current burst */
 
 	/* new stuff using RandomVariable */
 	ExponentialRandomVariable burstlen_;
 	ExponentialRandomVariable Offtime_;
-
+	ExponentialRandomVariable PKTSize;
 };
-
 
 static class EXPTrafficClass : public TclClass {
  public:
@@ -109,16 +114,19 @@ EXPOO_Traffic::EXPOO_Traffic() : burstlen_(0.0), Offtime_(0.0)
 	bind_time("burst_time_", &ontime_);
 	bind_time("idle_time_", Offtime_.avgp());
 	bind_bw("rate_", &rate_);
-	bind("packetSize_", &size_);
+	bind("packetSize_", PKTSize.avgp());
 }
 
 void EXPOO_Traffic::init()
 {
+         
         /* compute inter-packet interval during bursts based on
 	 * packet size and burst rate.  then compute average number
 	 * of packets in a burst.
 	 */
-	interval_ = (double)(size_ << 3)/(double)rate_;
+	interval_ = (double)((int)PKTSize.avg() << 3)/(double)rate_;
+	send_pkt_num = 0;
+
 	burstlen_.setavg(ontime_/interval_);
 	rem_ = 0;
 	if (agent_)
@@ -139,7 +147,7 @@ double EXPOO_Traffic::next_interval(int& size)
 		t += Offtime_.value();
 	}	
 	rem_--;
-
+	
 	size = size_;
 	return(t);
 }
@@ -152,16 +160,38 @@ void EXPOO_Traffic::timeout()
 	/* send a packet */
 	// The test tcl/ex/test-rcvr.tcl relies on the "NEW_BURST" flag being 
 	// set at the start of any exponential burst ("talkspurt").  
+	double pktsize = PKTSize.value();
+
+	//cout << "send_pkt_num = " << send_pkt_num << endl;
+	send_pkt_num++;
+
 	if (nextPkttime_ != interval_ || nextPkttime_ == -1) 
-		agent_->sendmsg(size_, "NEW_BURST");
+		agent_->sendmsg(pktsize, "NEW_BURST");
 	else 
-		agent_->sendmsg(size_);
+		agent_->sendmsg(pktsize);
 	/* figure out when to send the next one */
 	nextPkttime_ = next_interval(size_);
 	/* schedule it */
 	if (nextPkttime_ > 0)
 		timer_.resched(nextPkttime_);
+	
+	//cout << "PKTSize = " << pktsize << endl;
 }
 
 
+void EXPOO_Traffic::start()
+{
+	init();
+	running_ = 1;
+	timeout();	
+}
 
+void EXPOO_Traffic::stop()
+{
+	if (running_)
+		timer_.cancel();
+	
+	running_ = 0;
+	
+	/* call udp to call loss_monitor to print*/
+}

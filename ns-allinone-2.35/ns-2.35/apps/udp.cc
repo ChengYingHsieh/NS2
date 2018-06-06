@@ -44,12 +44,13 @@ static const char rcsid[] =
     "@(#) $Header: /cvsroot/nsnam/ns-2/apps/udp.cc,v 1.21 2005/08/26 05:05:28 tomh Exp $ (Xerox)";
 #endif
 
+#include <iostream>
 #include "udp.h"
 #include "rtp.h"
 #include "random.h"
 #include "address.h"
 #include "ip.h"
-
+using namespace std;
 
 static class UdpAgentClass : public TclClass {
 public:
@@ -62,11 +63,15 @@ public:
 UdpAgent::UdpAgent() : Agent(PT_UDP), seqno_(-1)
 {
 	bind("packetSize_", &size_);
+	size_ = 1000000;
+	totalpkt = 0;
 }
 
 UdpAgent::UdpAgent(packet_t type) : Agent(type)
 {
 	bind("packetSize_", &size_);
+	size_ = 1000000;
+	totalpkt = 0;
 }
 
 // put in timestamp and sequence number, even though UDP doesn't usually 
@@ -77,8 +82,15 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 	int n;
 
 	assert (size_ > 0);
-
-	n = nbytes / size_;
+	//size_ = nbytes;
+	n = nbytes / (size_);
+	//-----------------------------------------------------------
+	//cout << "total packet = " << totalpkt << endl;
+	totalpkt++;
+	//cout << "//-------------------------------------" << endl;
+	//cout << "nbytes = " << nbytes << endl;
+	//cout << "size_" << size_ << endl;
+	//-----------------------------------------------------------
 
 	if (nbytes == -1) {
 		printf("Error:  sendmsg() for UDP should not be -1\n");
@@ -86,10 +98,12 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 	}	
 
 	// If they are sending data, then it must fit within a single packet.
+	
 	if (data && nbytes > size_) {
 		printf("Error: data greater than maximum UDP packet size\n");
 		return;
 	}
+	
 
 	double local_time = Scheduler::instance().clock();
 	while (n-- > 0) {
@@ -98,8 +112,12 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		hdr_rtp* rh = hdr_rtp::access(p);
 		rh->flags() = 0;
 		rh->seqno() = ++seqno_;
-		hdr_cmn::access(p)->timestamp() = 
-		    (u_int32_t)(SAMPLERATE*local_time);
+		hdr_cmn::access(p)->timestamp() = (u_int32_t)(SAMPLERATE*local_time);
+
+		//-----------------------------------------------------
+		hdr_cmn::access(p)->PKT_sendtime() = local_time;
+		//-----------------------------------------------------
+
 		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
 		if (flags && (0 ==strcmp(flags, "NEW_BURST")))
 			rh->flags() |= RTP_M;
@@ -113,8 +131,13 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		hdr_rtp* rh = hdr_rtp::access(p);
 		rh->flags() = 0;
 		rh->seqno() = ++seqno_;
-		hdr_cmn::access(p)->timestamp() = 
-		    (u_int32_t)(SAMPLERATE*local_time);
+		hdr_cmn::access(p)->timestamp() = (u_int32_t)(SAMPLERATE*local_time);
+		
+		//-----------------------------------------------------
+		hdr_cmn::access(p)->PKT_sendtime() = local_time;
+		//cout << "rh->seqno() = " << rh->seqno() << endl;
+		//-----------------------------------------------------
+
 		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
 		if (flags && (0 == strcmp(flags, "NEW_BURST")))
 			rh->flags() |= RTP_M;

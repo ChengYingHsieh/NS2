@@ -38,13 +38,16 @@ static const char rcsid[] =
 #endif
 
 #include <tclcl.h>
-
+#include <iostream>
+#include <stdio.h>
 #include "agent.h"
 #include "config.h"
 #include "packet.h"
 #include "ip.h"
 #include "rtp.h"
 #include "loss-monitor.h"
+#include "udp.h"
+using namespace std;
 
 static class LossMonitorClass : public TclClass {
 public:
@@ -61,20 +64,55 @@ LossMonitor::LossMonitor() : Agent(PT_NTYPE)
 	npkts_ = 0;
 	expected_ = -1;
 	last_packet_time_ = 0.;
+	//--------------------------------
+	interval_sum_ = 0.;
+	print_ok = false;
+	//--------------------------------
+
 	seqno_ = 0;
 	bind("nlost_", &nlost_);
 	bind("npkts_", &npkts_);
 	bind("bytes_", &bytes_);
 	bind("lastPktTime_", &last_packet_time_);
 	bind("expected_", &expected_);
+	bind("agent_num_", &agent_num_);
 }
 
 void LossMonitor::recv(Packet* pkt, Handler*)
 {
+
 	hdr_rtp* p = hdr_rtp::access(pkt);
 	seqno_ = p->seqno();
-	bytes_ += hdr_cmn::access(pkt)->size();
+	//bytes_ += hdr_cmn::access(pkt)->size();
+	pktsize_sum_ += hdr_cmn::access(pkt)->size();
 	++npkts_;
+	
+	double current_time = Scheduler::instance().clock();	
+	//--------------------------------
+	delay_sum_ += (current_time - hdr_cmn::access(pkt)->PKT_sendtime());
+	mean_delay = delay_sum_ / npkts_;
+	//--------------------------------
+	mean_pktsize = pktsize_sum_ / npkts_;
+	//--------------------------------
+	interval_sum_ += (current_time - last_packet_time_);
+	mean_interval = interval_sum_ / npkts_;
+	//--------------------------------
+	if((current_time>=999) && (print_ok==false)){
+		//cout << "npkts_ = " << npkts_ << endl;
+		//cout << "PKT_sendtime() = " << hdr_cmn::access(pkt)->PKT_sendtime() << endl;
+		cout << "current_time = " << current_time << endl;
+
+		cout << "agent_num_" << agent_num_-1 << endl;
+		cout << "mean_delay = " << mean_delay << endl;
+		cout << "mean_pktsize = "<<  mean_pktsize << endl;
+		cout << "mean_interval = " << mean_interval << endl;
+		
+		ofstream fd;
+		fd.open("/home/wirelab/NS2/ns-allinone-2.35/hw1.txt",ios::app);
+		fd << (agent_num_-1) << " " << 10*(agent_num_-1) << " " << mean_delay << endl;
+		fd.close();
+		print_ok = true;
+	}
 	/*
 	 * Check for lost packets
 	 */

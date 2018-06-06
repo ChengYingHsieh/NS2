@@ -36,7 +36,7 @@
 #define ns_loss_monitor_h
 
 #include <tclcl.h>
-
+#include <fstream>
 #include "agent.h"
 #include "config.h"
 #include "packet.h"
@@ -48,13 +48,23 @@ public:
 	LossMonitor();
 	virtual int command(int argc, const char*const* argv);
 	virtual void recv(Packet* pkt, Handler*);
+	void print_hw(int);
+	
 protected:
 	int nlost_;
 	int npkts_;
 	int expected_;
 	int bytes_;
 	int seqno_;
+	int agent_num_;
+	unsigned long pktsize_sum_;
 	double last_packet_time_;
+	double interval_sum_;
+	double delay_sum_;
+	double mean_pktsize;
+	double mean_interval;
+	double mean_delay;
+	bool print_ok;
 };
 
 #endif // ns_loss_monitor_h
