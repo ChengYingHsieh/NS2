@@ -152,6 +152,10 @@ class Agent : public Connector {
         EventTrace *et_;
         virtual void trace_event(char *eventtype);
 
+	//-----------------------------
+	TrafficTimer timer_;
+	//-----------------------------
+
  private:
 	void flushAVar(TracedVar *v);
 };

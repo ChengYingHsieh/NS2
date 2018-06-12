@@ -71,6 +71,8 @@ Agent::Agent(packet_t pkttype) :
 	size_(0), type_(pkttype), 
 	channel_(0), traceName_(NULL),
 	oldValueList_(NULL), app_(0), et_(0)
+
+	timer_(this)
 {
 }
 
