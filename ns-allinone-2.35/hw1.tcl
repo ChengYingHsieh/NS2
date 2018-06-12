@@ -46,7 +46,7 @@ $ns attach-agent $n1 $lm
 $ns connect $udp $lm
 
 #Setup a exponential over UDP connection
-set round 10
+set round 2
 $lm set agent_num_ $round
 
 for {set i 1} {$i < $round} {incr i 1} {
