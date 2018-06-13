@@ -91,11 +91,11 @@ CFLAGS	+= $(CCOPT) $(DEFINE)
 
 .cc.o:
 	@rm -f $@
-	$(CPP) -g3 -c $(CFLAGS) $(INCLUDES) -o $@ $*.cc
+	$(CPP) -c $(CFLAGS) $(INCLUDES) -o $@ $*.cc
 
 .c.o:
 	@rm -f $@
-	$(CC) -g3 -c $(CFLAGS) $(INCLUDES) -o $@ $*.c
+	$(CC) -c $(CFLAGS) $(INCLUDES) -o $@ $*.c
 
 
 GEN_DIR	= gen/

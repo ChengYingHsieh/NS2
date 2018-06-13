@@ -58,7 +58,6 @@
 
 class Application;
 
-
 // store old value of traced vars
 // work only for TracedVarTcl
 struct OldValue {
@@ -68,6 +67,7 @@ struct OldValue {
 };
 
 class EventTrace;
+
 class Agent : public Connector {
  public:
 	Agent(packet_t pktType);
@@ -129,7 +129,8 @@ class Agent : public Connector {
 
 #ifdef notdef
 	int seqno_;		/* current seqno */
-	int class_;		/* class to place in packet header */
+	int class_;		/* class to place in packet header */	
+	
 #endif
 
 	static int uidcnt_;
@@ -152,9 +153,6 @@ class Agent : public Connector {
         EventTrace *et_;
         virtual void trace_event(char *eventtype);
 
-	//-----------------------------
-	TrafficTimer timer_;
-	//-----------------------------
 
  private:
 	void flushAVar(TracedVar *v);
