@@ -111,6 +111,7 @@ static const packet_t PT_TEARDOWN = 23;
 static const packet_t PT_LIVE = 24;   // packet from live network
 static const packet_t PT_REJECT = 25;
 
+
 static const packet_t PT_TELNET = 26; // not needed: telnet use TCP
 static const packet_t PT_FTP = 27;
 static const packet_t PT_PARETO = 28;

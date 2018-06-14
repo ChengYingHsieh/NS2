@@ -53,7 +53,7 @@ PERL	= /usr/bin/perl
 # for diffusion
 #DIFF_INCLUDES = "./diffusion3/main ./diffusion3/lib ./diffusion3/nr ./diffusion3/ns"
 
-CCOPT	=  -Wall -Wno-write-strings 
+CCOPT	=  -Wall -g -Wno-write-strings 
 STATIC	= 
 #LDFLAGS	= $(STATIC)
 LDFLAGS	=  -Wl,-export-dynamic 
@@ -187,7 +187,7 @@ OBJ_CC = \
 	adc/hb-adc.o adc/expavg-est.o\
 	adc/param-adc.o adc/null-estimator.o \
 	adc/adaptive-receiver.o apps/vatrcvr.o adc/consrcvr.o \
-	common/agent.o common/message.o apps/udp.o \
+	common/agent.o common/message.o apps/udp.o \ apps/cpu_disk.o \
 	common/session-rtp.o apps/rtp.o tcp/rtcp.o \
 	common/ivs.o \
 	common/messpass.o common/tp.o common/tpm.o apps/worm.o \
