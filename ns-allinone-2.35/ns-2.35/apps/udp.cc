@@ -101,9 +101,14 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		hdr_cmn::access(p)->timestamp() = 
 		    (u_int32_t)(SAMPLERATE*local_time);
 		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
+
+		//------------------------------------------------
+		hdr_cmn::access(p)->PKT_sendtime() = local_time;
+		//------------------------------------------------
+
 		if (flags && (0 ==strcmp(flags, "NEW_BURST")))
 			rh->flags() |= RTP_M;
-		p->setdata(data);
+		 p->setdata(data);
 		target_->recv(p);
 	}
 	n = nbytes % size_;

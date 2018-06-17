@@ -1,6 +1,6 @@
 #ifndef lint
 static const char rcsid[] =
-    "@(#) $Header: /cvsroot/nsnam/ns-2/apps/cpu_disk.cc,v 1.21 2005/08/26 05:05:28 tomh Exp $ (Xerox)";
+    "@(#) $Header: /cvsroot/nsnam/ns-2/apps/cpu.cc,v 1.21 2005/08/26 05:05:28 tomh Exp $ (Xerox)";
 #endif
 
 #include "agent.h"
@@ -20,15 +20,31 @@ class CpuAgent : public Agent {
 public:
 	CpuAgent();
 	CpuAgent(packet_t);
-	virtual void sendmsg(int nbytes, const char *flags = 0)
+
+	/*virtual void sendmsg(int nbytes, const char *flags = 0)
 	{
 		sendmsg(nbytes, NULL, flags);
-	}
-	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
+	}*/
+	//virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
 	virtual void recv(Packet* pkt, Handler*);
 	virtual int command(int argc, const char*const* argv);
+	//---------------------------------
+	void SendToDisk(Packet* pkt, double current_time, double stay_time);
+	//---------------------------------
+
 protected:
 	int seqno_;
+	//---------------------------------
+	double Time_start_;
+	double Time_head_;
+	double Time_tail_;
+	double usage;
+	double round_time_mean;
+	unsigned long busy_time_;
+	unsigned long round_time_sum;
+	unsigned int num_pkt;
+	//---------------------------------
+
 };
 
 
@@ -42,16 +58,20 @@ public:
 
 CpuAgent::CpuAgent() : Agent(PT_UDP), seqno_(-1)
 {
-	bind("packetSize_", &size_);
+	Time_start_ = Scheduler::instance().clock();
+	Time_head_ = 0;
+	Time_tail_ = 0;
+	usage = 0;
+	round_time_mean = 0;
+	round_time_sum = 0;
+	busy_time_ = 0;
+	num_pkt = 0;
 }
 
-CpuAgent::CpuAgent(packet_t type) : Agent(type)
-{
-	bind("packetSize_", &size_);
-}
 
 // put in timestamp and sequence number, even though CPU doesn't usually 
 // have one.
+/*
 void CpuAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 {
 	Packet *p;
@@ -78,7 +98,7 @@ void CpuAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		hdr_cmn::access(p)->size() = size_;
 		hdr_rtp* rh = hdr_rtp::access(p);
 		rh->flags() = 0;
-		rh->seqno() = ++seqno_;
+		rh->seqno() = ++seqno_;k
 		hdr_cmn::access(p)->timestamp() = 
 		    (u_int32_t)(SAMPLERATE*local_time);
 		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
@@ -103,7 +123,7 @@ void CpuAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		target_->recv(p);
 	}
 	idle();
-}
+}*/
 
 void CpuAgent::recv(Packet* pkt, Handler*)
 {
@@ -129,7 +149,44 @@ void CpuAgent::recv(Packet* pkt, Handler*)
 		          iph->src_.addr_ >> Address::instance().NodeShift_[1],
 			  data->data());
 	}
-	Packet::free(pkt);
+	//--------------------------------------------------------------------	
+	double current_time = Scheduler::instance().clock();
+	double pktrest_time = hdr_cmn::access(pkt)->PKT_resttime();
+	double stay_time;
+	if (pktrest_time >= 0.25){
+		stay_time = 0.25;
+	}else{
+		stay_time = pktrest_time;
+	}
+	//--------------------------------------------------------------------	
+	if (current_time >= Time_tail_){
+		/* usage */
+		busy_time_ += stay_time;
+		usage = busy_time_ / (current_time + stay_time - Time_start_);
+		
+		/* refresh time */
+		Time_head_ = current_time;
+		Time_tail_ = current_time + stay_time;
+
+		/* send to Disk */
+		SendToDisk(pkt, current_time, stay_time);
+
+	}else if ((current_time+stay_time) > Time_tail_){
+		/* usage */
+		busy_time_ += (current_time + stay_time - Time_tail_);
+		usage = busy_time_ / (current_time + stay_time - Time_start_);
+		
+		/* refresh time */
+		Time_tail_ = current_time + stay_time;
+
+		/* send to Disk */
+		SendToDisk(pkt, current_time, stay_time);
+
+	}else{
+		/* send to Disk */
+		SendToDisk(pkt, current_time, stay_time);
+	}
+	//--------------------------------------------------------------------	
 }
 
 
@@ -152,3 +209,18 @@ int CpuAgent::command(int argc, const char*const* argv)
 	}
 	return (Agent::command(argc, argv));
 }
+
+//------------------------------------------------------------------------------
+void CpuAgent::SendToDisk(Packet* pkt, double current_time, double stay_time)
+{
+	if (hdr_cmn::access(pkt)->PKT_resttime() >= 0.25){
+		hdr_cmn::access(pkt)->PKT_resttime() -= 0.25;
+		(void)Scheduler::instance().schedule(target_, pkt, stay_time);
+	}else{
+		round_time_sum += ((current_time + stay_time) - (hdr_cmn::access(pkt)->PKT_sendtime()));
+		num_pkt++;
+		round_time_mean = round_time_sum / num_pkt ;
+		Packet::free(pkt);
+	}
+}
+//------------------------------------------------------------------------------

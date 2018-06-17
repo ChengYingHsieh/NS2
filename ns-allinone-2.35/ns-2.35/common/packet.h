@@ -612,6 +612,12 @@ struct hdr_cmn {
         char src_rt_valid;
 	double ts_arr_; // Required by Marker of JOBS 
 
+	//-------------------------
+	double PKT_resttime_;
+	double PKT_sendtime_;
+	//-------------------------
+
+
 	//Monarch extn begins
 	nsaddr_t prev_hop_;     // IP addr of forwarding hop
 	nsaddr_t next_hop_;	// next hop for this packet
@@ -650,6 +656,12 @@ struct hdr_cmn {
 		return (hdr_cmn*) p->access(offset_);
 	}
 	
+	//--------------------------------------------
+	inline double& PKT_resttime() { return (PKT_resttime_); }
+	inline double& PKT_sendtime() { return (PKT_sendtime_); }
+	//--------------------------------------------
+
+
         /* per-field member functions */
 	inline packet_t& ptype() { return (ptype_); }
 	inline int& size() { return (size_); }
@@ -666,7 +678,6 @@ struct hdr_cmn {
 	inline int& num_forwards() { return (num_forwards_); }
 	inline int& opt_num_forwards() { return (opt_num_forwards_); }
         //monarch_end
-
 	ModulationScheme mod_scheme_;
 	inline ModulationScheme& mod_scheme() { return (mod_scheme_); }
 };
