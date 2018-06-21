@@ -3,6 +3,8 @@ static const char rcsid[] =
     "@(#) $Header: /cvsroot/nsnam/ns-2/apps/disk.cc,v 1.21 2005/08/26 05:05:28 tomh Exp $ (Xerox)";
 #endif
 
+#include <iostream>
+#include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
 #include "agent.h"
@@ -24,7 +26,7 @@ struct Disk_struct {
 	double Time_head_;
 	double Time_tail_;
 	double usage;
-	unsigned long busy_time;
+	long double busy_time;
 	ExponentialRandomVariable HowLongPktStay;
 };
 
@@ -59,6 +61,9 @@ public:
 DiskAgent::DiskAgent() : Agent(PT_UDP), seqno_(-1)
 {
 	double Time_now_ = Scheduler::instance().clock();
+	
+	cout << "Here is THE DISK " << endl;
+
 
 	for (int i=0; i<4; i++) {
 		Disk[i].Time_start_ = Time_now_;
@@ -172,7 +177,7 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 	//-------------------------------------------------------------------
 	if (current_time >= Disk[D_num].Time_tail_) {
 		/* usage */
-		Disk[D_num].busy_time += stay_time;
+		Disk[D_num].busy_time = Disk[D_num].busy_time + stay_time;
 		Disk[D_num].usage = Disk[D_num].busy_time / (current_time + stay_time - Disk[D_num].Time_start_);
 		
 		/* refresh time */
@@ -184,7 +189,7 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 
 	}else if ( (current_time+stay_time) > Disk[D_num].Time_tail_ ) {
 		/* usage */
-		Disk[D_num].busy_time += (current_time + stay_time - Disk[D_num].Time_tail_);
+		Disk[D_num].busy_time = Disk[D_num].busy_time + (current_time + stay_time - Disk[D_num].Time_tail_);
 		Disk[D_num].usage = Disk[D_num].busy_time / (current_time + stay_time - Disk[D_num].Time_start_);
 		
 		/* refresh time */
@@ -197,6 +202,12 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 		/* send to CPU */
 		(void)Scheduler::instance().schedule(target_, pkt, stay_time);
 
+	}
+
+	//-------------------------------------------------------------------
+	cout << "-----------------------------" << endl;
+	for (int i=0; i<4; i++){
+		cout << "Disk[" << i << "].usage = " << Disk[i].usage << endl;
 	}
 	//-------------------------------------------------------------------
 

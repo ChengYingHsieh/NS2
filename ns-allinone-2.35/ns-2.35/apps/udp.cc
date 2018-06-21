@@ -102,14 +102,12 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		    (u_int32_t)(SAMPLERATE*local_time);
 		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
 
-		//------------------------------------------------
-		hdr_cmn::access(p)->PKT_sendtime() = local_time;
-		//------------------------------------------------
-
 		if (flags && (0 ==strcmp(flags, "NEW_BURST")))
 			rh->flags() |= RTP_M;
 		 p->setdata(data);
-		target_->recv(p);
+
+		Scheduler::instance().schedule(target_,p,0);
+		//target_->recv(p);
 	}
 	n = nbytes % size_;
 	if (n > 0) {
@@ -120,11 +118,13 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		rh->seqno() = ++seqno_;
 		hdr_cmn::access(p)->timestamp() = 
 		    (u_int32_t)(SAMPLERATE*local_time);
-		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
+		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)	
+		
 		if (flags && (0 == strcmp(flags, "NEW_BURST")))
 			rh->flags() |= RTP_M;
 		p->setdata(data);
-		target_->recv(p);
+		Scheduler::instance().schedule(target_,p,0);
+		//target_->recv(p);
 	}
 	idle();
 }

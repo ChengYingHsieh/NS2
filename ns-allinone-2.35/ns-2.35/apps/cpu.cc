@@ -3,6 +3,8 @@ static const char rcsid[] =
     "@(#) $Header: /cvsroot/nsnam/ns-2/apps/cpu.cc,v 1.21 2005/08/26 05:05:28 tomh Exp $ (Xerox)";
 #endif
 
+#include <iostream>
+#include <stdio.h>
 #include "agent.h"
 #include "trafgen.h"
 #include "packet.h"
@@ -10,6 +12,7 @@ static const char rcsid[] =
 #include "string.h"
 #include "rtp.h"
 #include "random.h"
+#include "ranvar.h"
 #include "address.h"
 #include "ip.h"
 //"rtp timestamp" needs the samplerate
@@ -21,11 +24,11 @@ public:
 	CpuAgent();
 	CpuAgent(packet_t);
 
-	/*virtual void sendmsg(int nbytes, const char *flags = 0)
+	virtual void sendmsg(int nbytes, const char *flags = 0)
 	{
 		sendmsg(nbytes, NULL, flags);
-	}*/
-	//virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
+	}
+	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
 	virtual void recv(Packet* pkt, Handler*);
 	virtual int command(int argc, const char*const* argv);
 	//---------------------------------
@@ -40,9 +43,10 @@ protected:
 	double Time_tail_;
 	double usage;
 	double round_time_mean;
-	unsigned long busy_time_;
-	unsigned long round_time_sum;
+	long double busy_time_;
+	long double round_time_sum;
 	unsigned int num_pkt;
+	ExponentialRandomVariable HowLongPktLive;
 	//---------------------------------
 
 };
@@ -66,64 +70,42 @@ CpuAgent::CpuAgent() : Agent(PT_UDP), seqno_(-1)
 	round_time_sum = 0;
 	busy_time_ = 0;
 	num_pkt = 0;
+	HowLongPktLive.setavg(0.5);
 }
 
 
 // put in timestamp and sequence number, even though CPU doesn't usually 
 // have one.
-/*
+
 void CpuAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 {
 	Packet *p;
 	int n;
 
-	assert (size_ > 0);
-
-	n = nbytes / size_;
-
-	if (nbytes == -1) {
-		printf("Error:  sendmsg() for CPU should not be -1\n");
-		return;
-	}	
-
-	// If they are sending data, then it must fit within a single packet.
-	if (data && nbytes > size_) {
-		printf("Error: data greater than maximum CPU packet size\n");
-		return;
-	}
 
 	double local_time = Scheduler::instance().clock();
-	while (n-- > 0) {
-		p = allocpkt();
-		hdr_cmn::access(p)->size() = size_;
-		hdr_rtp* rh = hdr_rtp::access(p);
-		rh->flags() = 0;
-		rh->seqno() = ++seqno_;k
-		hdr_cmn::access(p)->timestamp() = 
-		    (u_int32_t)(SAMPLERATE*local_time);
-		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
-		if (flags && (0 ==strcmp(flags, "NEW_BURST")))
-			rh->flags() |= RTP_M;
-		p->setdata(data);
-		target_->recv(p);
-	}
-	n = nbytes % size_;
-	if (n > 0) {
-		p = allocpkt();
-		hdr_cmn::access(p)->size() = n;
-		hdr_rtp* rh = hdr_rtp::access(p);
-		rh->flags() = 0;
-		rh->seqno() = ++seqno_;
-		hdr_cmn::access(p)->timestamp() = 
-		    (u_int32_t)(SAMPLERATE*local_time);
-		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
-		if (flags && (0 == strcmp(flags, "NEW_BURST")))
-			rh->flags() |= RTP_M;
-		p->setdata(data);
-		target_->recv(p);
-	}
+	p = allocpkt();
+	hdr_cmn::access(p)->size() = nbytes;
+	hdr_rtp* rh = hdr_rtp::access(p);
+	rh->flags() = 0;
+	rh->seqno() = ++seqno_;
+	hdr_cmn::access(p)->timestamp() = 
+	    (u_int32_t)(SAMPLERATE*local_time);
+	// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
+	
+	//------------------------------------------------
+	hdr_cmn::access(p)->PKT_sendtime() = local_time;
+	hdr_cmn::access(p)->PKT_resttime() = HowLongPktLive.value();
+	//------------------------------------------------
+	
+	if (flags && (0 == strcmp(flags, "NEW_BURST")))
+		rh->flags() |= RTP_M;
+	p->setdata(data);
+	target_->recv(p);
+	
+	
 	idle();
-}*/
+}
 
 void CpuAgent::recv(Packet* pkt, Handler*)
 {
@@ -161,7 +143,7 @@ void CpuAgent::recv(Packet* pkt, Handler*)
 	//--------------------------------------------------------------------	
 	if (current_time >= Time_tail_){
 		/* usage */
-		busy_time_ += stay_time;
+		busy_time_ = busy_time_ + stay_time;
 		usage = busy_time_ / (current_time + stay_time - Time_start_);
 		
 		/* refresh time */
@@ -173,7 +155,7 @@ void CpuAgent::recv(Packet* pkt, Handler*)
 
 	}else if ((current_time+stay_time) > Time_tail_){
 		/* usage */
-		busy_time_ += (current_time + stay_time - Time_tail_);
+		busy_time_ = busy_time_ + (current_time + stay_time - Time_tail_);
 		usage = busy_time_ / (current_time + stay_time - Time_start_);
 		
 		/* refresh time */
@@ -186,6 +168,10 @@ void CpuAgent::recv(Packet* pkt, Handler*)
 		/* send to Disk */
 		SendToDisk(pkt, current_time, stay_time);
 	}
+	//--------------------------------------------------------------------	
+	cout << "-----------------------------" << endl;
+	cout << "CPU Usage = " << usage << endl;
+	cout << "PKT round time = " << round_time_mean << endl;
 	//--------------------------------------------------------------------	
 }
 
@@ -214,10 +200,14 @@ int CpuAgent::command(int argc, const char*const* argv)
 void CpuAgent::SendToDisk(Packet* pkt, double current_time, double stay_time)
 {
 	if (hdr_cmn::access(pkt)->PKT_resttime() >= 0.25){
-		hdr_cmn::access(pkt)->PKT_resttime() -= 0.25;
+		hdr_cmn::access(pkt)->PKT_resttime() = hdr_cmn::access(pkt)->PKT_resttime() - 0.25;
+		
+		cout << "target_ = "<< target_ << endl;
+
 		(void)Scheduler::instance().schedule(target_, pkt, stay_time);
+
 	}else{
-		round_time_sum += ((current_time + stay_time) - (hdr_cmn::access(pkt)->PKT_sendtime()));
+		round_time_sum = round_time_sum + ((current_time + stay_time) - (hdr_cmn::access(pkt)->PKT_sendtime()));
 		num_pkt++;
 		round_time_mean = round_time_sum / num_pkt ;
 		Packet::free(pkt);

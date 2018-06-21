@@ -47,6 +47,8 @@
 #include "agent.h"
 #include "trafgen.h"
 #include "packet.h"
+#include "random.h"
+#include "ranvar.h"
 
 //"rtp timestamp" needs the samplerate
 #define SAMPLERATE 8000
@@ -65,6 +67,7 @@ public:
 	virtual int command(int argc, const char*const* argv);
 protected:
 	int seqno_;
+	ExponentialRandomVariable HowLongPktLive;
 };
 
 #endif
