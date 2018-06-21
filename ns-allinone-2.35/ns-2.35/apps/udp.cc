@@ -44,6 +44,8 @@ static const char rcsid[] =
     "@(#) $Header: /cvsroot/nsnam/ns-2/apps/udp.cc,v 1.21 2005/08/26 05:05:28 tomh Exp $ (Xerox)";
 #endif
 
+#include <iostream>
+#include <stdio.h>
 #include "udp.h"
 #include "rtp.h"
 #include "random.h"
@@ -150,6 +152,8 @@ void UdpAgent::recv(Packet* pkt, Handler*)
 		          iph->src_.addr_ >> Address::instance().NodeShift_[1],
 			  data->data());
 	}
+
+
 	Packet::free(pkt);
 }
 

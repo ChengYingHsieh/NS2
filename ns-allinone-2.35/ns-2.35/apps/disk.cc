@@ -3,6 +3,7 @@ static const char rcsid[] =
     "@(#) $Header: /cvsroot/nsnam/ns-2/apps/disk.cc,v 1.21 2005/08/26 05:05:28 tomh Exp $ (Xerox)";
 #endif
 
+#include "udp.h"
 #include <iostream>
 #include <stdio.h>
 #include <time.h>
@@ -34,11 +35,11 @@ struct Disk_struct {
 class DiskAgent : public Agent {
 public:
 	DiskAgent();
-	/*virtual void sendmsg(int nbytes, const char *flags = 0)
+	virtual void sendmsg(int nbytes, const char *flags = 0)
 	{
 		sendmsg(nbytes, NULL, flags);
-	}*/
-	//virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
+	}
+	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
 	virtual void recv(Packet* pkt, Handler*);
 	virtual int command(int argc, const char*const* argv);
 	int PickNum();
@@ -58,7 +59,7 @@ public:
 } class_disk_agent;
 
 
-DiskAgent::DiskAgent() : Agent(PT_UDP), seqno_(-1)
+DiskAgent::DiskAgent() : Agent(PT_DISK), seqno_(-1)
 {
 	double Time_now_ = Scheduler::instance().clock();
 	
@@ -91,7 +92,7 @@ int DiskAgent::PickNum()
 
 // put in timestamp and sequence number, even though CPU doesn't usually 
 // have one.
-/*
+
 void DiskAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 {
 	Packet *p;
@@ -143,7 +144,7 @@ void DiskAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 		target_->recv(p);
 	}
 	idle();
-}*/
+}
 
 void DiskAgent::recv(Packet* pkt, Handler*)
 {
@@ -171,9 +172,20 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 	}
 	
 	//-------------------------------------------------------------------
+	Packet* p = allocpkt();
+	
+	hdr_cmn::access(p)->size() = hdr_cmn::access(pkt)->size_;
+	hdr_cmn::access(p)->timestamp() = hdr_cmn::access(pkt)->ts_;
+	    //(u_int32_t)(SAMPLERATE*local_time);
+	hdr_cmn::access(p)->PKT_sendtime() = hdr_cmn::access(pkt)->PKT_sendtime_;
+	hdr_cmn::access(p)->PKT_resttime() = hdr_cmn::access(pkt)->PKT_resttime_;
+	
+	
+	Packet::free(pkt);
+	//-------------------------------------------------------------------
 	int D_num = PickNum();
 	double current_time = Scheduler::instance().clock();
-	double stay_time = Disk[D_num].HowLongPktStay.value();
+	double stay_time = 0.2;//Disk[D_num].HowLongPktStay.value();
 	//-------------------------------------------------------------------
 	if (current_time >= Disk[D_num].Time_tail_) {
 		/* usage */
@@ -185,7 +197,7 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 		Disk[D_num].Time_tail_ = current_time + stay_time;
 		
 		/* send to CPU */
-		(void)Scheduler::instance().schedule(target_, pkt, stay_time);
+		(void)Scheduler::instance().schedule(target_, p, stay_time);
 
 	}else if ( (current_time+stay_time) > Disk[D_num].Time_tail_ ) {
 		/* usage */
@@ -196,11 +208,11 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 		Disk[D_num].Time_tail_ = current_time + stay_time;
 		
 		/* send to CPU */
-		(void)Scheduler::instance().schedule(target_, pkt, stay_time);
+		(void)Scheduler::instance().schedule(target_, p, stay_time);
 
 	}else {
 		/* send to CPU */
-		(void)Scheduler::instance().schedule(target_, pkt, stay_time);
+		(void)Scheduler::instance().schedule(target_, p, stay_time);
 
 	}
 

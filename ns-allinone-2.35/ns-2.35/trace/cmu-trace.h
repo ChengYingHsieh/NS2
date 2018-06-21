@@ -159,6 +159,10 @@ private:
 	void	format_tora(Packet *p, int offset);
         void    format_imep(Packet *p, int offset);
         void    format_aodv(Packet *p, int offset);
+	//------------------------------------------
+	void 	format_cpu(Packet *p, int offset);
+	void 	format_disk(Packet *p, int offset);
+	//------------------------------------------
 	void    format_aomdv(Packet *p, int offset);
 	void    format_mdart(Packet *p, int offset);
 

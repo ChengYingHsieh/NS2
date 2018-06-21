@@ -12,8 +12,6 @@ set n0 [$ns node]
 set n1 [$ns node]
 
 
-
-
 #Setup CPU agent on n0
 set cpu [new Agent/CPU]
 $ns attach-agent $n0 $cpu
@@ -30,6 +28,7 @@ $ns connect $cpu $disk
 
 #Create links between the nodes
 $ns duplex-link $n0 $n1 1000000Mb 0ms DropTail
+
 
 
 #Set Queue Size of link (n0-n1) to infinite

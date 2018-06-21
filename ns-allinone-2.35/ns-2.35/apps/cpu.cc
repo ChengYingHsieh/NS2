@@ -15,6 +15,7 @@ static const char rcsid[] =
 #include "ranvar.h"
 #include "address.h"
 #include "ip.h"
+#include "udp.h"
 //"rtp timestamp" needs the samplerate
 #define SAMPLERATE 8000
 #define RTP_M 0x0080 // marker for significant events
@@ -60,7 +61,7 @@ public:
 	}
 } class_cpu_agent;
 
-CpuAgent::CpuAgent() : Agent(PT_UDP), seqno_(-1)
+CpuAgent::CpuAgent() : Agent(PT_CPU), seqno_(-1)
 {
 	Time_start_ = Scheduler::instance().clock();
 	Time_head_ = 0;
@@ -103,7 +104,6 @@ void CpuAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 	p->setdata(data);
 	target_->recv(p);
 	
-	
 	idle();
 }
 
@@ -131,6 +131,25 @@ void CpuAgent::recv(Packet* pkt, Handler*)
 		          iph->src_.addr_ >> Address::instance().NodeShift_[1],
 			  data->data());
 	}
+	
+	//--------------------------------------------------------------------	
+	Packet* p = allocpkt();
+	Packet::free(pkt);
+	/*
+	hdr_cmn::access(p)->size() = hdr_cmn::access(pkt)->size_;
+	
+	
+	hdr_rtp* rh = hdr_rtp::access(p);
+	rh->flags() = 0;
+	rh->seqno() = hdr_rtp::access(pkt)->seqno_;//++seqno_;
+	*/
+	/*
+	hdr_cmn::access(p)->timestamp() = hdr_cmn::access(pkt)->ts_;
+	    //(u_int32_t)(SAMPLERATE*local_time);
+	hdr_cmn::access(p)->PKT_sendtime() = hdr_cmn::access(pkt)->PKT_sendtime_;
+	hdr_cmn::access(p)->PKT_resttime() = hdr_cmn::access(pkt)->PKT_resttime_;
+	
+	*/
 	//--------------------------------------------------------------------	
 	double current_time = Scheduler::instance().clock();
 	double pktrest_time = hdr_cmn::access(pkt)->PKT_resttime();
@@ -151,7 +170,7 @@ void CpuAgent::recv(Packet* pkt, Handler*)
 		Time_tail_ = current_time + stay_time;
 
 		/* send to Disk */
-		SendToDisk(pkt, current_time, stay_time);
+		SendToDisk(p, current_time, stay_time);
 
 	}else if ((current_time+stay_time) > Time_tail_){
 		/* usage */
@@ -162,11 +181,11 @@ void CpuAgent::recv(Packet* pkt, Handler*)
 		Time_tail_ = current_time + stay_time;
 
 		/* send to Disk */
-		SendToDisk(pkt, current_time, stay_time);
+		SendToDisk(p, current_time, stay_time);
 
 	}else{
 		/* send to Disk */
-		SendToDisk(pkt, current_time, stay_time);
+		SendToDisk(p, current_time, stay_time);
 	}
 	//--------------------------------------------------------------------	
 	cout << "-----------------------------" << endl;

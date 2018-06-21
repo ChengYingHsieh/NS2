@@ -200,8 +200,15 @@ static const packet_t PT_DCCP_RESET = 71;
         // M-DART packets
 static const packet_t PT_MDART = 72;
 	
-        // insert new packet types here
-static packet_t       PT_NTYPE = 73; // This MUST be the LAST one
+
+//-------------------------------------------------
+static const packet_t PT_CPU = 73;
+static const packet_t PT_DISK = 74;
+//-------------------------------------------------
+
+// insert new packet types here
+static packet_t       PT_NTYPE = 75; // This MUST be the LAST one
+
 
 enum packetClass
 {
@@ -259,7 +266,9 @@ public:
 		         (type) == PT_ACK || \
 		         (type) == PT_SCTP || \
 		         (type) == PT_SCTP_APP1 || \
-		         (type) == PT_HDLC \
+		         (type) == PT_HDLC || \
+			 (type) == PT_CPU || \
+			 (type) == PT_DISK \
 		        );
 	}
 	static packetClass classify(packet_t type) {		
@@ -417,6 +426,12 @@ public:
 		name_[PT_DCCP_CLOSE]="DCCP_Close";
 		name_[PT_DCCP_CLOSEREQ]="DCCP_CloseReq";
 		name_[PT_DCCP_RESET]="DCCP_Reset";
+		
+
+		//---------------------------------------
+		name_[PT_CPU]="cpu";
+		name_[PT_DISK]="disk";
+		//---------------------------------------
 
 		name_[PT_NTYPE]= "undefined";
 	}

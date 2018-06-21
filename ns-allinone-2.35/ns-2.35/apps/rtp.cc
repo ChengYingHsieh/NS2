@@ -37,13 +37,15 @@ static const char rcsid[] =
     "@(#) $Header: /cvsroot/nsnam/ns-2/apps/rtp.cc,v 1.27 2005/08/22 05:08:32 tomh Exp $";
 #endif
 
-
+#include <iostream>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "config.h"
 #include "agent.h"
 #include "random.h"
 #include "rtp.h"
+using namespace std;
 
 int hdr_rtp::offset_;
 
@@ -158,6 +160,7 @@ void RTPAgent::recv(Packet* p, Handler*)
 		session_->recv(p, 0);
 	else
 		Packet::free(p);
+
 }
 
 int RTPAgent::command(int argc, const char*const* argv)
