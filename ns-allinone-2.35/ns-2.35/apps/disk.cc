@@ -149,28 +149,6 @@ void DiskAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 void DiskAgent::recv(Packet* pkt, Handler*)
 {
 
-	if (app_ ) {
-		// If an application is attached, pass the data to the app
-		hdr_cmn* h = hdr_cmn::access(pkt);
-		app_->process_data(h->size(), pkt->userdata());
-
-	} else if (pkt->userdata() && pkt->userdata()->type() == PACKET_DATA) {
-		// otherwise if it's just PacketData, pass it to Tcl
-		//
-		// Note that a Tcl procedure Agent/Disk recv {from data}
-		// needs to be defined.  For example,
-		//
-		// Agent/Disk instproc recv {from data} {puts data}
-
-		PacketData* data = (PacketData*)pkt->userdata();
-
-		hdr_ip* iph = hdr_ip::access(pkt);
-                Tcl& tcl = Tcl::instance();
-		tcl.evalf("%s process_data %d {%s}", name(),
-		          iph->src_.addr_ >> Address::instance().NodeShift_[1],
-			  data->data());
-	}
-	
 	//-------------------------------------------------------------------
 	Packet* p = allocpkt();
 	
@@ -187,6 +165,10 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 	double current_time = Scheduler::instance().clock();
 	double stay_time = 0.2;//Disk[D_num].HowLongPktStay.value();
 	//-------------------------------------------------------------------
+	
+	cout << "-----------------------------" << endl;
+	
+	
 	if (current_time >= Disk[D_num].Time_tail_) {
 		/* usage */
 		Disk[D_num].busy_time = Disk[D_num].busy_time + stay_time;
@@ -197,6 +179,7 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 		Disk[D_num].Time_tail_ = current_time + stay_time;
 		
 		/* send to CPU */
+		cout << "case1" << endl;
 		(void)Scheduler::instance().schedule(target_, p, stay_time);
 
 	}else if ( (current_time+stay_time) > Disk[D_num].Time_tail_ ) {
@@ -208,16 +191,17 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 		Disk[D_num].Time_tail_ = current_time + stay_time;
 		
 		/* send to CPU */
+		cout << "case2" << endl;
 		(void)Scheduler::instance().schedule(target_, p, stay_time);
 
 	}else {
 		/* send to CPU */
+		cout << "case3" << endl;
 		(void)Scheduler::instance().schedule(target_, p, stay_time);
 
 	}
 
 	//-------------------------------------------------------------------
-	cout << "-----------------------------" << endl;
 	for (int i=0; i<4; i++){
 		cout << "Disk[" << i << "].usage = " << Disk[i].usage << endl;
 	}

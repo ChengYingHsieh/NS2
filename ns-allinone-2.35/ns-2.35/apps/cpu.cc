@@ -30,7 +30,7 @@ public:
 		sendmsg(nbytes, NULL, flags);
 	}
 	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
-	virtual void recv(Packet* pkt, Handler*);
+	virtual void recv(Packet* pkt, Handler* ha);
 	virtual int command(int argc, const char*const* argv);
 	//---------------------------------
 	void SendToDisk(Packet* pkt, double current_time, double stay_time);
@@ -107,49 +107,23 @@ void CpuAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 	idle();
 }
 
-void CpuAgent::recv(Packet* pkt, Handler*)
+void CpuAgent::recv(Packet* pkt, Handler* ha)
 {
 
-	if (app_ ) {
-		// If an application is attached, pass the data to the app
-		hdr_cmn* h = hdr_cmn::access(pkt);
-		app_->process_data(h->size(), pkt->userdata());
-
-	} else if (pkt->userdata() && pkt->userdata()->type() == PACKET_DATA) {
-		// otherwise if it's just PacketData, pass it to Tcl
-		//
-		// Note that a Tcl procedure Agent/Cpu recv {from data}
-		// needs to be defined.  For example,
-		//
-		// Agent/Cpu instproc recv {from data} {puts data}
-
-		PacketData* data = (PacketData*)pkt->userdata();
-
-		hdr_ip* iph = hdr_ip::access(pkt);
-                Tcl& tcl = Tcl::instance();
-		tcl.evalf("%s process_data %d {%s}", name(),
-		          iph->src_.addr_ >> Address::instance().NodeShift_[1],
-			  data->data());
-	}
-	
 	//--------------------------------------------------------------------	
 	Packet* p = allocpkt();
-	Packet::free(pkt);
-	/*
+	
 	hdr_cmn::access(p)->size() = hdr_cmn::access(pkt)->size_;
-	
-	
 	hdr_rtp* rh = hdr_rtp::access(p);
 	rh->flags() = 0;
-	rh->seqno() = hdr_rtp::access(pkt)->seqno_;//++seqno_;
-	*/
-	/*
+	rh->seqno() = ++seqno_;
+	
 	hdr_cmn::access(p)->timestamp() = hdr_cmn::access(pkt)->ts_;
 	    //(u_int32_t)(SAMPLERATE*local_time);
 	hdr_cmn::access(p)->PKT_sendtime() = hdr_cmn::access(pkt)->PKT_sendtime_;
 	hdr_cmn::access(p)->PKT_resttime() = hdr_cmn::access(pkt)->PKT_resttime_;
 	
-	*/
+	Packet::free(pkt);
 	//--------------------------------------------------------------------	
 	double current_time = Scheduler::instance().clock();
 	double pktrest_time = hdr_cmn::access(pkt)->PKT_resttime();
