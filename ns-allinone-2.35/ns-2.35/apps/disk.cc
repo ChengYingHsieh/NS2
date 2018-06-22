@@ -6,7 +6,6 @@ static const char rcsid[] =
 #include "udp.h"
 #include <iostream>
 #include <stdio.h>
-#include <time.h>
 #include <stdlib.h>
 #include "agent.h"
 #include "trafgen.h"
@@ -28,24 +27,20 @@ struct Disk_struct {
 	double Time_tail_;
 	double usage;
 	long double busy_time;
-	ExponentialRandomVariable HowLongPktStay;
 };
 
 
 class DiskAgent : public Agent {
 public:
 	DiskAgent();
-	virtual void sendmsg(int nbytes, const char *flags = 0)
-	{
-		sendmsg(nbytes, NULL, flags);
-	}
-	virtual void sendmsg(int nbytes, AppData* data, const char *flags = 0);
 	virtual void recv(Packet* pkt, Handler*);
 	virtual int command(int argc, const char*const* argv);
 	int PickNum();
 
 protected:
 	int seqno_;
+	int pick_num_;
+	ExponentialRandomVariable HowLongPktStay;
 	Disk_struct Disk[4];
 };
 
@@ -62,17 +57,16 @@ public:
 DiskAgent::DiskAgent() : Agent(PT_DISK), seqno_(-1)
 {
 	double Time_now_ = Scheduler::instance().clock();
+	double pick_num_ = 0;
 	
-	cout << "Here is THE DISK " << endl;
-
-
+	HowLongPktStay.setavg(0.2);
+	
 	for (int i=0; i<4; i++) {
 		Disk[i].Time_start_ = Time_now_;
 		Disk[i].Time_head_ = 0;
 		Disk[i].Time_tail_ = 0;
 		Disk[i].usage = 0;
 		Disk[i].busy_time = 0;
-		Disk[i].HowLongPktStay.setavg(0.2);
 	}
 }
 
@@ -80,95 +74,37 @@ DiskAgent::DiskAgent() : Agent(PT_DISK), seqno_(-1)
 //----------------------------------------------------------------------
 int DiskAgent::PickNum()
 {
-	int array[10] = {1,2,2,3,3,3,4,4,4,4};
+	
+	pick_num_++;
 
-	srand(time(NULL));
-	int pick = (rand() % (9-0+1))+0;
+	if (pick_num_ >= 10) {pick_num_ = 0;}
+	
+	int array[10] = {0,1,1,2,2,2,3,3,3,3};
 
-	return array[pick];
+	return array[pick_num_];
 }
 //----------------------------------------------------------------------
 
-
-// put in timestamp and sequence number, even though CPU doesn't usually 
-// have one.
-
-void DiskAgent::sendmsg(int nbytes, AppData* data, const char* flags)
-{
-	Packet *p;
-	int n;
-
-	assert (size_ > 0);
-
-	n = nbytes / size_;
-
-	if (nbytes == -1) {
-		printf("Error:  sendmsg() for CPU should not be -1\n");
-		return;
-	}	
-
-	// If they are sending data, then it must fit within a single packet.
-	if (data && nbytes > size_) {
-		printf("Error: data greater than maximum CPU packet size\n");
-		return;
-	}
-
-	double local_time = Scheduler::instance().clock();
-	while (n-- > 0) {
-		p = allocpkt();
-		hdr_cmn::access(p)->size() = size_;
-		hdr_rtp* rh = hdr_rtp::access(p);
-		rh->flags() = 0;
-		rh->seqno() = ++seqno_;
-		hdr_cmn::access(p)->timestamp() = 
-		    (u_int32_t)(SAMPLERATE*local_time);
-		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
-		if (flags && (0 ==strcmp(flags, "NEW_BURST")))
-			rh->flags() |= RTP_M;
-		p->setdata(data);
-		target_->recv(p);
-	}
-	n = nbytes % size_;
-	if (n > 0) {
-		p = allocpkt();
-		hdr_cmn::access(p)->size() = n;
-		hdr_rtp* rh = hdr_rtp::access(p);
-		rh->flags() = 0;
-		rh->seqno() = ++seqno_;
-		hdr_cmn::access(p)->timestamp() = 
-		    (u_int32_t)(SAMPLERATE*local_time);
-		// add "beginning of talkspurt" labels (tcl/ex/test-rcvr.tcl)
-		if (flags && (0 == strcmp(flags, "NEW_BURST")))
-			rh->flags() |= RTP_M;
-		p->setdata(data);
-		target_->recv(p);
-	}
-	idle();
-}
-
 void DiskAgent::recv(Packet* pkt, Handler*)
 {
-
 	//-------------------------------------------------------------------
 	Packet* p = allocpkt();
 	
 	hdr_cmn::access(p)->size() = hdr_cmn::access(pkt)->size_;
 	hdr_cmn::access(p)->timestamp() = hdr_cmn::access(pkt)->ts_;
-	    //(u_int32_t)(SAMPLERATE*local_time);
 	hdr_cmn::access(p)->PKT_sendtime() = hdr_cmn::access(pkt)->PKT_sendtime_;
 	hdr_cmn::access(p)->PKT_resttime() = hdr_cmn::access(pkt)->PKT_resttime_;
-	
 	
 	Packet::free(pkt);
 	//-------------------------------------------------------------------
 	int D_num = PickNum();
 	double current_time = Scheduler::instance().clock();
-	double stay_time = 0.2;//Disk[D_num].HowLongPktStay.value();
+	double stay_time = HowLongPktStay.value();
 	//-------------------------------------------------------------------
 	
 	cout << "-----------------------------" << endl;
-	
-	
+	cout << "stay_time = " << stay_time << endl;
+
 	if (current_time >= Disk[D_num].Time_tail_) {
 		/* usage */
 		Disk[D_num].busy_time = Disk[D_num].busy_time + stay_time;

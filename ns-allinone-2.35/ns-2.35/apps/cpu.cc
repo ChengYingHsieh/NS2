@@ -102,7 +102,45 @@ void CpuAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 	if (flags && (0 == strcmp(flags, "NEW_BURST")))
 		rh->flags() |= RTP_M;
 	p->setdata(data);
-	target_->recv(p);
+	
+	//--------------------------------------------------------------------	
+	double current_time = Scheduler::instance().clock();
+	double pktrest_time = hdr_cmn::access(p)->PKT_resttime_;
+	double stay_time;
+	if (pktrest_time >= 0.25){
+		stay_time = 0.25;
+	}else{
+		stay_time = pktrest_time;
+	}
+	//--------------------------------------------------------------------	
+	if (current_time >= Time_tail_){
+		// usage 
+		busy_time_ = busy_time_ + stay_time;
+		usage = busy_time_ / (current_time + stay_time - Time_start_);
+		
+		// refresh time 
+		Time_head_ = current_time;
+		Time_tail_ = current_time + stay_time;
+
+		// send to Disk 
+		SendToDisk(p, current_time, stay_time);
+
+	}else if ((current_time+stay_time) > Time_tail_){
+		// usage
+		busy_time_ = busy_time_ + (current_time + stay_time - Time_tail_);
+		usage = busy_time_ / (current_time + stay_time - Time_start_);
+		
+		// refresh time 
+		Time_tail_ = current_time + stay_time;
+
+		// send to Disk 
+		SendToDisk(p, current_time, stay_time);
+
+	}else{
+		// send to Disk 
+		SendToDisk(p, current_time, stay_time);
+	}
+	//--------------------------------------------------------------------	
 	
 	idle();
 }
@@ -119,14 +157,13 @@ void CpuAgent::recv(Packet* pkt, Handler* ha)
 	rh->seqno() = ++seqno_;
 	
 	hdr_cmn::access(p)->timestamp() = hdr_cmn::access(pkt)->ts_;
-	    //(u_int32_t)(SAMPLERATE*local_time);
 	hdr_cmn::access(p)->PKT_sendtime() = hdr_cmn::access(pkt)->PKT_sendtime_;
 	hdr_cmn::access(p)->PKT_resttime() = hdr_cmn::access(pkt)->PKT_resttime_;
 	
 	Packet::free(pkt);
 	//--------------------------------------------------------------------	
 	double current_time = Scheduler::instance().clock();
-	double pktrest_time = hdr_cmn::access(pkt)->PKT_resttime();
+	double pktrest_time = hdr_cmn::access(p)->PKT_resttime_;
 	double stay_time;
 	if (pktrest_time >= 0.25){
 		stay_time = 0.25;
@@ -163,6 +200,11 @@ void CpuAgent::recv(Packet* pkt, Handler* ha)
 	}
 	//--------------------------------------------------------------------	
 	cout << "-----------------------------" << endl;
+	cout << "usage = busy_time_ / (current_time + stay_time - Time_start_)" << endl;
+	cout << "busy_time_ = " << busy_time_ << endl;
+	cout << "current_time = " << current_time << endl;
+	cout << "stay_time_ = " << stay_time << endl;
+	cout << "Time_start_ = " << Time_start_ << endl;
 	cout << "CPU Usage = " << usage << endl;
 	cout << "PKT round time = " << round_time_mean << endl;
 	//--------------------------------------------------------------------	

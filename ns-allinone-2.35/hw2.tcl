@@ -41,7 +41,7 @@ $exp attach-agent $cpu
 $exp set packetSize_ 131072
 #131072 = 128 * 1024
 $exp set burst_time_ 0ms
-$exp set idle_time_ 100ms
+$exp set idle_time_ 1000ms
 #100ms = 0.1s = 10 tasks/sec
 $exp set rate_ 1000000k
 
@@ -50,8 +50,8 @@ $exp set rate_ 1000000k
 
 #Schedule events for the Exponential agent.
 $ns at 0.1 "$exp start"
-$ns at 1000 "$exp stop"
-$ns at 1000.1 "finish"
+$ns at 5000 "$exp stop"
+$ns at 5000.1 "finish"
 
 
 #Run the simulation
