@@ -111,6 +111,7 @@ static const packet_t PT_TEARDOWN = 23;
 static const packet_t PT_LIVE = 24;   // packet from live network
 static const packet_t PT_REJECT = 25;
 
+
 static const packet_t PT_TELNET = 26; // not needed: telnet use TCP
 static const packet_t PT_FTP = 27;
 static const packet_t PT_PARETO = 28;
@@ -199,8 +200,15 @@ static const packet_t PT_DCCP_RESET = 71;
         // M-DART packets
 static const packet_t PT_MDART = 72;
 	
-        // insert new packet types here
-static packet_t       PT_NTYPE = 73; // This MUST be the LAST one
+
+//-------------------------------------------------
+static const packet_t PT_CPU = 73;
+static const packet_t PT_DISK = 74;
+//-------------------------------------------------
+
+// insert new packet types here
+static packet_t       PT_NTYPE = 75; // This MUST be the LAST one
+
 
 enum packetClass
 {
@@ -258,7 +266,9 @@ public:
 		         (type) == PT_ACK || \
 		         (type) == PT_SCTP || \
 		         (type) == PT_SCTP_APP1 || \
-		         (type) == PT_HDLC \
+		         (type) == PT_HDLC || \
+			 (type) == PT_CPU || \
+			 (type) == PT_DISK \
 		        );
 	}
 	static packetClass classify(packet_t type) {		
@@ -416,6 +426,12 @@ public:
 		name_[PT_DCCP_CLOSE]="DCCP_Close";
 		name_[PT_DCCP_CLOSEREQ]="DCCP_CloseReq";
 		name_[PT_DCCP_RESET]="DCCP_Reset";
+		
+
+		//---------------------------------------
+		name_[PT_CPU]="cpu";
+		name_[PT_DISK]="disk";
+		//---------------------------------------
 
 		name_[PT_NTYPE]= "undefined";
 	}
@@ -611,6 +627,12 @@ struct hdr_cmn {
         char src_rt_valid;
 	double ts_arr_; // Required by Marker of JOBS 
 
+	//-------------------------
+	double PKT_resttime_;
+	double PKT_sendtime_;
+	//-------------------------
+
+
 	//Monarch extn begins
 	nsaddr_t prev_hop_;     // IP addr of forwarding hop
 	nsaddr_t next_hop_;	// next hop for this packet
@@ -649,6 +671,12 @@ struct hdr_cmn {
 		return (hdr_cmn*) p->access(offset_);
 	}
 	
+	//--------------------------------------------
+	inline double& PKT_resttime() { return (PKT_resttime_); }
+	inline double& PKT_sendtime() { return (PKT_sendtime_); }
+	//--------------------------------------------
+
+
         /* per-field member functions */
 	inline packet_t& ptype() { return (ptype_); }
 	inline int& size() { return (size_); }
@@ -665,7 +693,6 @@ struct hdr_cmn {
 	inline int& num_forwards() { return (num_forwards_); }
 	inline int& opt_num_forwards() { return (opt_num_forwards_); }
         //monarch_end
-
 	ModulationScheme mod_scheme_;
 	inline ModulationScheme& mod_scheme() { return (mod_scheme_); }
 };

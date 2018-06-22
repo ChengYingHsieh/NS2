@@ -187,7 +187,7 @@ OBJ_CC = \
 	adc/hb-adc.o adc/expavg-est.o\
 	adc/param-adc.o adc/null-estimator.o \
 	adc/adaptive-receiver.o apps/vatrcvr.o adc/consrcvr.o \
-	common/agent.o common/message.o apps/udp.o \
+	common/agent.o common/message.o apps/udp.o apps/cpu.o apps/disk.o \
 	common/session-rtp.o apps/rtp.o tcp/rtcp.o \
 	common/ivs.o \
 	common/messpass.o common/tp.o common/tpm.o apps/worm.o \
