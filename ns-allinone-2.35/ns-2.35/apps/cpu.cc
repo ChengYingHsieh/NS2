@@ -4,6 +4,7 @@ static const char rcsid[] =
 #endif
 
 #include <iostream>
+#include <fstream>
 #include <stdio.h>
 #include "agent.h"
 #include "trafgen.h"
@@ -38,6 +39,8 @@ public:
 
 protected:
 	int seqno_;
+	double taskPsec_;
+	bool cut_;
 	//---------------------------------
 	double Time_start_;
 	double Time_head_;
@@ -72,6 +75,8 @@ CpuAgent::CpuAgent() : Agent(PT_CPU), seqno_(-1)
 	busy_time_ = 0;
 	num_pkt = 0;
 	HowLongPktLive.setavg(0.5);
+	bind("taskPsec_", &taskPsec_);
+	cut_ = false;
 }
 
 
@@ -207,7 +212,16 @@ void CpuAgent::recv(Packet* pkt, Handler* ha)
 	cout << "Time_start_ = " << Time_start_ << endl;
 	cout << "CPU Usage = " << usage << endl;
 	cout << "PKT round time = " << round_time_mean << endl;
-	//--------------------------------------------------------------------	
+	cout << "taskPsec_ = " << taskPsec_ << endl;
+	//--------------------------------------------------------------------
+	if ((current_time>=9999) && (cut_==false)){
+		ofstream fd;
+		fd.open("/home/wirelab/NS2/ns-allinone-2.35/cpu.txt",ios::app);
+		fd << (taskPsec_) << " " << usage << " " << round_time_mean << endl;
+		fd.close();
+		cut_ = true;
+	}
+	//--------------------------------------------------------------------
 }
 
 

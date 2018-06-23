@@ -5,6 +5,8 @@ static const char rcsid[] =
 
 #include "udp.h"
 #include <iostream>
+#include <fstream>
+#include <cstring>
 #include <stdio.h>
 #include <stdlib.h>
 #include "agent.h"
@@ -27,6 +29,7 @@ struct Disk_struct {
 	double Time_tail_;
 	double usage;
 	long double busy_time;
+	ofstream fd;
 };
 
 
@@ -40,6 +43,8 @@ public:
 protected:
 	int seqno_;
 	int pick_num_;
+	double taskPsec_;
+	bool cut_;
 	ExponentialRandomVariable HowLongPktStay;
 	Disk_struct Disk[4];
 };
@@ -68,6 +73,10 @@ DiskAgent::DiskAgent() : Agent(PT_DISK), seqno_(-1)
 		Disk[i].usage = 0;
 		Disk[i].busy_time = 0;
 	}
+	
+	bind("taskPsec_", &taskPsec_);
+	cut_ = false;
+	
 }
 
 
@@ -140,6 +149,22 @@ void DiskAgent::recv(Packet* pkt, Handler*)
 	//-------------------------------------------------------------------
 	for (int i=0; i<4; i++){
 		cout << "Disk[" << i << "].usage = " << Disk[i].usage << endl;
+	}
+	cout << "taskPsec_ = " << taskPsec_ << endl;
+	//-------------------------------------------------------------------
+	if ((current_time>=9999) && (cut_==false)){
+
+		char address[100];
+		
+		for (int i=0; i<4; i++) {
+			
+			sprintf(address, "/home/wirelab/NS2/ns-allinone-2.35/disk%d.txt", i+1);
+
+			Disk[i].fd.open(address,ios::app);
+			Disk[i].fd << (taskPsec_) << " " << Disk[i].usage << endl;
+			Disk[i].fd.close();
+			cut_ = true;
+		}
 	}
 	//-------------------------------------------------------------------
 
